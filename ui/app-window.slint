@@ -1,0 +1,97 @@
+import { LineEdit, ComboBox } from "std-widgets.slint";
+
+export component MainWindow inherits Window {
+    title: "Our-Pipe";
+    width: 500px;
+    height: 300px;
+    background: #372d6b;
+
+    pure callback download-button-clicked(
+        url: string,
+        file-name: string,
+        format: string,
+        quality: string,
+    );
+
+    HorizontalLayout {
+        alignment: LayoutAlignment.center;
+
+        VerticalLayout {
+            width: root.width;
+            padding: 20px;
+            spacing: 17px;
+            alignment: LayoutAlignment.start;
+
+            HorizontalLayout {
+                Text {
+                    text: "URL : ";
+                    font-size: 25px;
+                }
+
+                input-url := LineEdit {
+                    font-size: 14px;
+                }
+            }
+
+            HorizontalLayout {
+                Text {
+                    text: "File Name : ";
+                    font-size: 25px;
+                }
+
+                input-file-name := LineEdit {
+                    font-size: 14px;
+                }
+            }
+
+            HorizontalLayout {
+                Text {
+                    text: "Format : ";
+                    font-size: 25px;
+                }
+
+                input-format := ComboBox {
+                    model: ["mp4", "mp3"];
+                }
+            }
+
+            HorizontalLayout {
+                Text {
+                    text: "Quality : ";
+                    font-size: 25px;
+                }
+
+                input-quality := ComboBox {
+                    model: ["Best", "High", "Medium", "Low", "Worst"];
+                    
+                }
+            }
+
+            HorizontalLayout {
+                Rectangle {
+                    height: 60px;
+                    background: #ce5252;
+                    border-radius: 15px;
+
+                    Text {
+                        text: "Download";
+                        font-size: 25px;
+                    }
+
+                    TouchArea {
+                        mouse-cursor: MouseCursor.pointer;
+
+                        clicked => {
+                            root.download-button-clicked(
+                                input-url.text,
+                                input-file-name.text,
+                                input-format.current-value,
+                                input-quality.current-value,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
