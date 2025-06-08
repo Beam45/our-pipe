@@ -19,10 +19,10 @@ pub enum YtdlpLibrary {
 
 // Check if required yt_dlp library binaries are installed,
 // return which libraries need to be installed.
-pub async fn check_library_installation() -> Result<Option<YtdlpLibrary>, Error> {
-    // If library directory does not exist, create it.
-    if !tokio::fs::try_exists("yt-dlp-libs").await? {
-        tokio::fs::create_dir("yt-dlp-libs").await?
+pub fn check_library_installation() -> Result<Option<YtdlpLibrary>, Error> {
+    // If the library directory does not exist, create it.
+    if !std::fs::exists("yt-dlp-libs")? {
+        std::fs::create_dir("yt-dlp-libs")?
     }
 
     // Library installation path for windows.
@@ -38,43 +38,34 @@ pub async fn check_library_installation() -> Result<Option<YtdlpLibrary>, Error>
     const YTDLP_PATH: &str = "yt-dlp-libs/yt-dlp";
 
     // Check if ffmpeg is installed.
-    let ffmpeg_installed: bool = tokio::fs::try_exists(FFMPEG_PATH).await?;
+    let ffmpeg_installed: bool = std::fs::exists(FFMPEG_PATH)?;
     // Check if yt-dlp is installed.
-    let yt_dlp_installed: bool = tokio::fs::try_exists(YTDLP_PATH).await?;
+    let yt_dlp_installed: bool = std::fs::exists(YTDLP_PATH)?;
 
-    // If either library is missing: return which one,
-    // if both are missing: return both.
-    if !ffmpeg_installed {
-        return Ok(Some(YtdlpLibrary::Ffmpeg));
-    } else if !yt_dlp_installed {
-        return Ok(Some(YtdlpLibrary::Ytdlp));
-    } else if !ffmpeg_installed && !yt_dlp_installed {
-        return Ok(Some(YtdlpLibrary::Both));
-    } else {
-        Ok(None)
+    // If either library is missing: return which one.
+    // If both are missing: return both.
+    match (ffmpeg_installed, yt_dlp_installed) {
+        (true, true) => Ok(None),
+        (false, true) => Ok(Some(YtdlpLibrary::Ffmpeg)),
+        (true, false) => Ok(Some(YtdlpLibrary::Ytdlp)),
+        (false, false) => Ok(Some(YtdlpLibrary::Both))
     }
 }
 
-// Installs specified library/libraries from github source.
-pub async fn install_libraries(library: YtdlpLibrary) -> Result<(), Error> {
-    match library {
+// Installs specified library/libraries from their respective GitHub source.
+pub async fn install_libraries(missing_libraries: &YtdlpLibrary) -> Result<(), Error> {
+    let installer = LibraryInstaller::new("yt-dlp-libs".into());
+
+    match missing_libraries {
         YtdlpLibrary::Ffmpeg => {
-            LibraryInstaller::new("yt-dlp-libs".into())
-                .install_ffmpeg(None)
-                .await?;
+            installer.install_ffmpeg(None).await?;
         }
         YtdlpLibrary::Ytdlp => {
-            LibraryInstaller::new("yt-dlp-libs".into())
-                .install_youtube(None)
-                .await?;
+            installer.install_youtube(None).await?;
         }
         YtdlpLibrary::Both => {
-            LibraryInstaller::new("yt-dlp-libs".into())
-                .install_ffmpeg(None)
-                .await?;
-            LibraryInstaller::new("yt-dlp-libs".into())
-                .install_youtube(None)
-                .await?;
+            installer.install_ffmpeg(None).await?;
+            installer.install_youtube(None).await?;
         }
     }
 
