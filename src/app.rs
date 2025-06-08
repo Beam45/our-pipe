@@ -4,113 +4,111 @@ use yt_dlp::model::{AudioQuality, VideoQuality};
 
 slint::include_modules!();
 
-#[derive(Debug, Clone)]
-enum Format {
-    Mp4,
-    Mp3,
-}
-
-#[derive(Debug, Clone)]
-enum Quality {
-    Best,
-    High,
-    Medium,
-    Low,
-    Worst,
-}
-
-pub struct SlintApp {
-    downloader: Downloader,
-    url: String,
-    file_name: String,
-    format: Format,
-    quality: Quality,
-}
-
-impl SlintApp {
-    pub fn new() -> Result<Self, utils::Error> {
-        Ok(Self {
-            downloader: Downloader::new(None)?,
-            url: String::new(),
-            file_name: String::new(),
-            format: Format::Mp4,
-            quality: Quality::Best,
-        })
+pub async fn run_app() -> Result<(), utils::Error> {
+    if let Some(missing_libs) = utils::check_library_installation()? {
+        show_download_lib_dialog(&missing_libs).await;
+        utils::install_libraries(&missing_libs).await?;
     }
 
-    pub async fn run(&mut self) -> Result<(), utils::Error> {
-        if let Some(missing_libs) = utils::check_library_installation().await? {
-            println!("missing library/libraries: {missing_libs:?}");
+    let window = MainWindow::new()?;
 
-            if Self::show_download_lib_dialog() == rfd::MessageDialogResult::Ok {
-                if let Err(lib_download_error) = utils::install_libraries(missing_libs).await {
-                    Self::show_error_dialog(&format!("{lib_download_error}")).await;
-                }
-            } else {
-                return Ok(());
-            }
-        }
+    window.on_download_button_clicked(begin_download);
 
-        
+    window.run()?;
 
-        Ok(())
-    }
+    Ok(())
+}
 
-    async fn download_video(&self) -> Result<(), utils::Error> {
-        let (video_quality, audio_quality) = match self.quality {
-            Quality::Best => (VideoQuality::Best, AudioQuality::Best),
-            Quality::High => (VideoQuality::High, AudioQuality::High),
-            Quality::Medium => (VideoQuality::Medium, AudioQuality::Medium),
-            Quality::Low => (VideoQuality::Low, AudioQuality::Low),
-            Quality::Worst => (VideoQuality::Worst, AudioQuality::Worst),
+fn begin_download(
+    url: slint::SharedString,
+    file_name: slint::SharedString,
+    format: slint::SharedString,
+    quality: slint::SharedString
+) {
+    slint::spawn_local(async move {
+        let downloader = Downloader::new(None).unwrap();
+
+        let url = url.as_str();
+        let file_name = file_name.as_str();
+        let (video_quality, audio_quality) = match quality.as_str() {
+            "Best" => (VideoQuality::Best, AudioQuality::Best),
+            "High" => (VideoQuality::High, AudioQuality::High),
+            "Medium" => (VideoQuality::Medium, AudioQuality::Medium),
+            "Low" => (VideoQuality::Low, AudioQuality::Low),
+            "Worst" => (VideoQuality::Worst, AudioQuality::Worst),
+            _ => (VideoQuality::Best, AudioQuality::Best)
         };
 
-        match self.format {
-            Format::Mp4 => {
-                self.downloader.download_video_mp4(
-                    &self.url,
-                    &self.file_name,
+        match format.as_str() {
+            "mp4" => {
+                show_downloading_dialog().await;
+                match downloader.download_video_mp4(
+                    url,
+                    file_name,
                     video_quality,
                     audio_quality
-                ).await?;
+                ).await {
+                    Ok(_) => show_success_dialog().await,
+                    Err(download_err) => show_error_dialog(format!("{download_err}")).await
+                }
             }
-            Format::Mp3 => {
-                self.downloader.download_video_mp3(
-                    &self.url,
-                    &self.file_name,
+            "mp3" => {
+                show_downloading_dialog().await;
+                match downloader.download_video_mp3(
+                    url,
+                    file_name,
                     audio_quality
-                ).await?;
+                ).await {
+                    Ok(_) => show_success_dialog().await,
+                    Err(download_err) => show_error_dialog(format!("{download_err}")).await
+                }
             }
+            _ => {}
         }
+    }).unwrap();
+}
 
-        Ok(())
-    }
+async fn show_error_dialog(error_msg: String) {
+    rfd::AsyncMessageDialog::new()
+        .set_level(rfd::MessageLevel::Error)
+        .set_title("Error")
+        .set_description(format!("An error has occurred: {error_msg}"))
+        .show()
+        .await;
+}
 
-    fn show_download_lib_dialog() -> rfd::MessageDialogResult {
-        rfd::MessageDialog::new()
-            .set_level(rfd::MessageLevel::Info)
-            .set_title("Installing Libraries")
-            .set_description("Required libraries not found, click ok to install them")
-            .set_buttons(rfd::MessageButtons::Ok)
-            .show()
-    }
+async fn show_downloading_dialog() {
+    rfd::AsyncMessageDialog::new()
+        .set_level(rfd::MessageLevel::Info)
+        .set_title("Starting Download")
+        .set_description("Video download has begun.")
+        .set_buttons(rfd::MessageButtons::Ok)
+        .show()
+        .await;
+}
 
-    async fn show_error_dialog(error_msg: &str) {
-        rfd::AsyncMessageDialog::new()
-            .set_level(rfd::MessageLevel::Error)
-            .set_title("Error")
-            .set_description(format!("An error has occurred: {error_msg}"))
-            .show()
-            .await;
-    }
+async fn show_success_dialog() {
+    rfd::AsyncMessageDialog::new()
+        .set_level(rfd::MessageLevel::Info)
+        .set_title("Success!")
+        .set_description("Video was downloaded successfully!")
+        .set_buttons(rfd::MessageButtons::Ok)
+        .show()
+        .await;
+}
 
-    async fn show_success_dialog() {
-        rfd::AsyncMessageDialog::new()
-            .set_level(rfd::MessageLevel::Info)
-            .set_title("Success!")
-            .set_description("Video was downloaded successfully!")
-            .set_buttons(rfd::MessageButtons::Ok)
-            .show()
-            .await;
-    }
+async fn show_download_lib_dialog(missing_lib: &utils::YtdlpLibrary) {
+    let missing_lib_text = match missing_lib {
+        utils::YtdlpLibrary::Ffmpeg => "FFMPEG not found, installing it now...",
+        utils::YtdlpLibrary::Ytdlp => "yt-dlp not found, installing it now...",
+        utils::YtdlpLibrary::Both => "FFPMPEG and yt-dlp not found, installing them now..."
+    };
+
+    rfd::AsyncMessageDialog::new()
+        .set_level(rfd::MessageLevel::Info)
+        .set_title("Installing Libraries")
+        .set_description(missing_lib_text)
+        .set_buttons(rfd::MessageButtons::Ok)
+        .show()
+        .await;
 }

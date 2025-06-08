@@ -6,12 +6,7 @@ export component MainWindow inherits Window {
     height: 300px;
     background: #372d6b;
 
-    out property <string> url;
-    out property <string> file-name;
-    out property <string> format;
-    out property <string> quality;
-
-    pure callback download-button-clicked();
+    pure callback download-button-clicked(url: string, file-name: string, format: string, quality: string);
 
     HorizontalLayout {
         alignment: LayoutAlignment.center;
@@ -29,7 +24,6 @@ export component MainWindow inherits Window {
                 }
 
                 input-url := LineEdit {
-                    text: url;
                     font-size: 14px;
                 }
             }
@@ -41,7 +35,6 @@ export component MainWindow inherits Window {
                 }
 
                 input-file-name := LineEdit {
-                    text: file-name;
                     font-size: 14px;
                 }
             }
@@ -54,7 +47,6 @@ export component MainWindow inherits Window {
 
                 input-format := ComboBox {
                     model: ["mp4", "mp3"];
-                    current-value: format;
                 }
             }
 
@@ -66,7 +58,6 @@ export component MainWindow inherits Window {
 
                 input-quality := ComboBox {
                     model: ["Best", "High", "Medium", "Low", "Worst"];
-                    current-value: quality;
                 }
             }
 
@@ -85,7 +76,12 @@ export component MainWindow inherits Window {
                         mouse-cursor: MouseCursor.pointer;
 
                         clicked => {
-                            root.download-button-clicked();
+                            download-button-clicked(
+                                input-url.text,
+                                input-file-name.text,
+                                input-format.current-value,
+                                input-quality.current-value,
+                            );
                         }
                     }
                 }

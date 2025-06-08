@@ -11,7 +11,7 @@ use yt_dlp::{
 };
 
 // Provides further abstraction over the yt-dlp library to create
-// convience methods to easily download youtube videos based on format.
+// convenience methods to easily download YouTube videos based on format.
 #[derive(Debug, Clone)]
 pub struct Downloader {
     fetcher: yt_dlp::Youtube,
@@ -25,7 +25,7 @@ impl Downloader {
         let libraries =
             deps::Libraries::new("yt-dlp-libs/yt-dlp".into(), "yt-dlp-libs/ffmpeg".into());
 
-        // If no output directory is specified the default will
+        // If no output directory is specified, the default will
         // be set to 'yt-dlp-output'.
         let output_dir = match output_dir {
             Some(dir) => PathBuf::from(dir),
