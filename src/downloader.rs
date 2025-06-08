@@ -52,9 +52,9 @@ impl Downloader {
                 url,
                 format!("{file_name}.mp4"),
                 video_quality,
-                VideoCodecPreference::Any,
+                VideoCodecPreference::VP9,
                 audio_quality,
-                AudioCodecPreference::Any,
+                AudioCodecPreference::Opus,
             )
             .await?;
 
@@ -73,7 +73,7 @@ impl Downloader {
                 url,
                 format!("{file_name}.mp3"),
                 audio_quality,
-                AudioCodecPreference::Any,
+                AudioCodecPreference::Opus,
             )
             .await?;
 
